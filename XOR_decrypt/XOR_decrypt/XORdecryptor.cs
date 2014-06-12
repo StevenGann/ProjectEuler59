@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -90,10 +91,13 @@ namespace XOR_decrypt
         private void decrypt()
         {
             char[] password = new char[3];
-            byte[] decryptAttempt = new byte[cipherBytes.Count];
+            
 
             stopwatch.Start();
             //Brute-Force
+            //=============================================MULTITHREAD THIS==========================================
+            Dictionary<Thread, char[]> threads = new Dictionary<Thread, char[]>();
+
             foreach (char char1 in PasswordChars)
             {
                 foreach (char char2 in PasswordChars)
@@ -104,21 +108,43 @@ namespace XOR_decrypt
                         password[1] = char2;
                         password[2] = char3;
 
-                        XOR(cipherBytes, password, ref decryptAttempt);
-                        int newScore = heuristic(decryptAttempt);
+                        Thread newThread = new Thread(() => threadStart(password));
+                        newThread.Start();
+                        //threads.Add(newThread, password);
+                        //============Relocate to threads threadStart()
+                        //byte[] decryptAttempt = new byte[cipherBytes.Count];
+                        //XOR(cipherBytes, password, ref decryptAttempt);
+                        //int newScore = heuristic(decryptAttempt);
 
-                        if (newScore > bestScore)
-                        {
-                            bestScore = newScore;
-                            bestAnswer = Encoding.ASCII.GetString(decryptAttempt, 0, decryptAttempt.Length);
-                            bestPassword = new string(password);
-                        }
+                        //if (newScore > bestScore)
+                        //{
+                        //    bestScore = newScore;
+                        //    bestAnswer = Encoding.ASCII.GetString(decryptAttempt, 0, decryptAttempt.Length);
+                        //    bestPassword = new string(password);
+                        //}
+                        //================================
                     }
                 }
             }
 
+            //foreach ( KeyValuePair<Thread, char[]> entry in threads) {entry.Key.Start(entry.Value);}
+            //========================================================================================================
             stopwatch.Stop();
             bestTime = stopwatch.Elapsed;
+        }
+
+        private void threadStart(char[] password)
+        {
+            byte[] decryptAttempt = new byte[cipherBytes.Count];
+            XOR(cipherBytes, password, ref decryptAttempt);
+            int newScore = heuristic(decryptAttempt);
+
+            if (newScore > bestScore)
+            {
+                bestScore = newScore;
+                bestAnswer = Encoding.ASCII.GetString(decryptAttempt, 0, decryptAttempt.Length);
+                bestPassword = new string(password);
+            }
         }
 
         private void XOR(List<byte> input, char[] password, ref byte[] result)
